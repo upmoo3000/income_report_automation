@@ -12,21 +12,37 @@
 5. 수입결의서 열어 확인 필요라고 입력된 학생 및 기타 서식 정리
 '''
 import pandas as pd
-import re
 import openpyxl as op
+import re
+import gspread as gs
 
-# 엑셀 파일 불러오기
-transactions = pd.read_excel('3_transaction_history.xlsx')
-studentsList = pd.read_excel('students_list.xlsx')
-wb = op.load_workbook(r"income_report.xlsx") 
+# 환경변수
+from dotenv import load_dotenv
+import os
+load_dotenv()
+googleApiKey = os.environ.get("GOOGLE_API_KEY")
+studentsListSheetURL = os.environ.get("STUDENTS_LIST_SHEET_URL")
+activatedSheetName = os.environ.get("ACTIVATED_SHEET_NAME")
+transactionFile = os.environ.get("TRANSACTION_FILE_NAME")
+incomeReportFile = os.environ.get("INCOME_REPORT_FILE_NAME")
+
+# 엑셀 파일 불러오기 - 구글 시트에서 불러온다면...?
+transactions = pd.read_excel(transactionFile)
+# transactions = pd.read_excel('3_transaction_history.xlsx')
+wb = op.load_workbook(incomeReportFile) 
 ws = wb.active
 # 스타일 설정
 styles = op.styles      
 
+# Google Sheets
+gc = gs.service_account(filename=googleApiKey)
+doc = gc.open_by_url(studentsListSheetURL)
+worksheet = doc.worksheet(activatedSheetName)
+
 # 입금내역 변수 저장 및 입사자명단에서 학생명 추출하여 배열화
 depositors = transactions['내역']
-studentNamesFromStudentsList = [i for i in studentsList['이름']]
-depositorNamesFromStudentsList = [i for i in studentsList['입금자명']]
+studentNamesFromStudentsList = worksheet.col_values(4)
+depositorNamesFromStudentsList = worksheet.col_values(15)
 onlyDepositorNames = []
 
 # 입금내역에서 숫자 제거하여 문자만 추출
@@ -42,8 +58,9 @@ for val in depositors:
 
 # 입금자명행에서 입금자명 유무 확인
 def searchStudentIdx(name):
-    for i, studentName in enumerate(studentNamesFromStudentsList, 0):
-        if name not in studentName:
+    for i, val in enumerate(studentNamesFromStudentsList, 0):
+        studentName = str(val)
+        if studentName == 'nan' or name not in studentName:
             continue
         if name in studentName:
             return i
