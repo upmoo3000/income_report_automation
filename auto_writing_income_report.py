@@ -26,18 +26,17 @@ activatedSheetName = os.environ.get("ACTIVATED_SHEET_NAME")
 transactionFile = os.environ.get("TRANSACTION_FILE_NAME")
 incomeReportFile = os.environ.get("INCOME_REPORT_FILE_NAME")
 
-# 엑셀 파일 불러오기 - 구글 시트에서 불러온다면...?
+# 엑셀 파일 불러오기
 transactions = pd.read_excel(transactionFile)
-# transactions = pd.read_excel('3_transaction_history.xlsx')
 wb = op.load_workbook(incomeReportFile) 
 ws = wb.active
-# 스타일 설정
-styles = op.styles      
-
 # Google Sheets
 gc = gs.service_account(filename=googleApiKey)
 doc = gc.open_by_url(studentsListSheetURL)
 worksheet = doc.worksheet(activatedSheetName)
+
+# 스타일 설정
+styles = op.styles   
 
 # 입금내역 변수 저장 및 입사자명단에서 학생명 추출하여 배열화
 depositors = transactions['내역']
