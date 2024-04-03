@@ -9,7 +9,7 @@
 2. 파일명 '[월]_transaction_history'로 변경
 3. auto_writing_income_report.py 내 18행의 불러올 파일명을 방금 다운 받은 거래내역조회서의 파일명과 똑같이 변경
 4. ctrl + alt + N 하면 파이썬 코드가 실행되어 수입결의서에 학생 이름 자동 입력
-5. 수입결의서 열어 확인 필요라고 입력된 학생 및 기타 서식 정리
+5. 수입결의서 열어 학생 및 기타 서식 정리(노란색: 이름만 불일치, 빨간색: 이름&입금자 둘 다 불일치)
 '''
 import pandas as pd
 import openpyxl as op
@@ -19,6 +19,7 @@ import gspread as gs
 # 환경변수
 from dotenv import load_dotenv
 import os
+
 load_dotenv()
 googleApiKey = os.environ.get("GOOGLE_API_KEY")
 studentsListSheetURL = os.environ.get("STUDENTS_LIST_SHEET_URL")
@@ -42,7 +43,8 @@ styles = op.styles
 depositors = transactions['내역']
 studentNamesFromStudentsList = worksheet.col_values(4)
 depositorNamesFromStudentsList = worksheet.col_values(15)
-onlyDepositorNames = []
+incomeReportNameCol = ws['B']
+onlyDepositorNames = []       
 
 # 입금내역에서 숫자 제거하여 문자만 추출
 def extractNonNumeric(val):
@@ -61,7 +63,7 @@ def searchStudentIdx(name):
         studentName = str(val)
         if studentName == 'nan' or name not in studentName:
             continue
-        if name in studentName:
+        if name == studentName:
             return i
 
 # 입금자명행에서 입금자명 유무 확인
@@ -75,15 +77,16 @@ def searchDepositorIdx(name):
 
 # 결괏값 삽입
 for i, name in enumerate(onlyDepositorNames, 0):
-    studentIdx = searchStudentIdx(name) # 입사자명단 이름행에서 입금자명 검색
+    # 입금완료열 탐색
+    studentIdx = searchStudentIdx(name) # 입사자명단 이름열에서 입금자명 검색
     if studentIdx: 
         ws['B'+ str(i + 2)].value = studentNamesFromStudentsList[studentIdx]
         continue
-    depositorIdx = searchDepositorIdx(name) # 이름행에서 입금자명 검색 안 될 시 입금자명행에서 입금자명 검색 후 삽입
+    depositorIdx = searchDepositorIdx(name) # 이름열에서 입금자명 검색 안 될 시 입금자명열에서 입금자명 검색 후 삽입
     if depositorIdx:
-        ws['B'+ str(i + 2)].value = studentNamesFromStudentsList[depositorIdx]
+        ws['B'+ str(i + 2)].value = studentNamesFromStudentsList[depositorIdx] + depositorNamesFromStudentsList[depositorIdx]
         ws['B'+ str(i + 2)].fill = styles.PatternFill(fill_type ='solid', fgColor = styles.Color('FFFF00'))
-    else: # 이름행 및 입금자명행 둘 다 검색 안 될 시 확인 필요 문구 삽입&빨간색칠
+    else: # 이름열 및 입금자명열 둘 다 검색 안 될 시 확인 필요 문구 삽입&빨간색칠
         ws['B'+ str(i + 2)].value = name + ' 확인 필요'
         ws['B'+ str(i + 2)].fill = styles.PatternFill(fill_type ='solid', fgColor = styles.Color('FFFF0000'))
                 
